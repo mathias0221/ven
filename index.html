@@ -1,0 +1,1509 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Enrutador</title>
+    <!-- Leaflet CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <!-- Leaflet Draw CSS -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/leaflet.draw.css" />
+    <!-- Leaflet MarkerCluster CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.4.1/dist/MarkerCluster.css" />
+    <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.4.1/dist/MarkerCluster.Default.css" />
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <!-- SheetJS -->
+    <script src="https://cdn.sheetjs.com/xlsx-0.19.3/package/dist/xlsx.full.min.js"></script>
+    <!-- Leaflet JS -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <!-- Leaflet Draw JS -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/leaflet.draw.js"></script>
+    <!-- Leaflet MarkerCluster JS -->
+    <script src="https://unpkg.com/leaflet.markercluster@1.4.1/dist/leaflet.markercluster.js"></script>
+    <!-- Turf.js para operaciones geoespaciales -->
+    <script src="https://unpkg.com/@turf/turf@6/turf.min.js"></script>
+    <!-- Papa Parse para manejo de CSV -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.0/papaparse.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/quagga@0.12.1/dist/quagga.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Poppins', sans-serif;
+            background: linear-gradient(135deg, #2c3e50, #3498db);
+            color: white;
+            min-height: 100vh;
+        }
+
+        .header {
+            background: transparent;
+            color: white;
+            padding: 3rem 2rem;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .header::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: url('data:image/svg+xml,<svg width="20" height="20" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg"><rect width="1" height="1" fill="rgba(255,255,255,0.05)"/></svg>');
+            opacity: 0.1;
+        }
+
+        .header h1 {
+            font-size: 4.5rem;
+            font-weight: 700;
+            margin-bottom: 3.5rem;
+            text-align: center;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.2);
+            letter-spacing: 2px;
+            position: relative;
+        }
+
+        .header h1::after {
+            display: none;
+        }
+
+        .header-buttons {
+            display: flex;
+            gap: 2.5rem;
+            justify-content: center;
+            width: 100%;
+            max-width: 1200px;
+            position: relative;
+            z-index: 1;
+        }
+
+        .btn {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border: 2px solid rgba(255, 255, 255, 0.2);
+            color: white;
+            padding: 1.2rem 2.5rem;
+            border-radius: 15px;
+            cursor: pointer;
+            font-size: 1.2rem;
+            font-weight: 500;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            min-width: 180px;
+            justify-content: center;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .btn::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(45deg, transparent, rgba(255,255,255,0.1), transparent);
+            transform: translateX(-100%);
+            transition: 0.5s;
+        }
+
+        .btn:hover {
+            background: rgba(255, 255, 255, 0.2);
+            transform: translateY(-3px);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+        }
+
+        .btn:hover::before {
+            transform: translateX(100%);
+        }
+
+        .btn.empty {
+            border: 2px dashed rgba(255, 255, 255, 0.3);
+            opacity: 0.8;
+        }
+
+        .btn.empty:hover {
+            opacity: 1;
+            border-color: rgba(255, 255, 255, 0.5);
+        }
+
+        .btn i {
+            font-size: 1.4rem;
+            transition: transform 0.3s ease;
+        }
+
+        .btn:hover i {
+            transform: scale(1.1);
+        }
+
+        .main-content {
+            padding: 2rem;
+            max-width: 1200px;
+            margin: 0 auto;
+            color: white;
+        }
+
+        .welcome-section {
+            background-color: white;
+            border-radius: 10px;
+            padding: 2rem;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            margin-bottom: 2rem;
+        }
+
+        .welcome-section h2 {
+            color: #1a237e;
+            margin-bottom: 1rem;
+        }
+
+        .welcome-section p {
+            color: #666;
+            line-height: 1.6;
+        }
+
+        .features-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 1.5rem;
+        }
+
+        .feature-card {
+            background-color: white;
+            border-radius: 10px;
+            padding: 1.5rem;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            transition: transform 0.3s ease;
+        }
+
+        .feature-card:hover {
+            transform: translateY(-5px);
+        }
+
+        .feature-card i {
+            font-size: 2rem;
+            color: #1a237e;
+            margin-bottom: 1rem;
+        }
+
+        .feature-card h3 {
+            color: #1a237e;
+            margin-bottom: 0.5rem;
+        }
+
+        .feature-card p {
+            color: #666;
+            font-size: 0.9rem;
+        }
+
+        /* Estilos del mapa (cuando está visible) */
+        #map-container {
+            display: none;
+        }
+
+        #map-container.visible {
+            display: flex;
+            flex-direction: row;
+        }
+
+        #map {
+            flex: 1;
+            height: 100%;
+            margin-right: 300px;
+        }
+
+        #sidebar {
+            width: 300px;
+            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+            padding: 25px;
+            box-shadow: -2px 0 15px rgba(0,0,0,0.1);
+            position: fixed;
+            right: 0;
+            top: 0;
+            height: 100%;
+            overflow-y: auto;
+        }
+
+        .zone-item {
+            margin-bottom: 15px;
+            padding: 12px;
+            background: #f8f9fa;
+            border-radius: 8px;
+            border: 1px solid #e9ecef;
+        }
+
+        .zone-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 8px;
+        }
+
+        .zone-name {
+            font-size: 16px;
+            font-weight: 600;
+            color: #333;
+        }
+
+        .zone-coords {
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+            color: #666;
+            background: #fff;
+            padding: 8px;
+            border-radius: 4px;
+            border: 1px solid #e9ecef;
+            white-space: pre-wrap;
+            margin-top: 8px;
+            max-height: 150px;
+            overflow-y: auto;
+            line-height: 1.4;
+        }
+
+        .delete-zone {
+            background: none;
+            border: none;
+            color: #dc3545;
+            cursor: pointer;
+            padding: 4px 8px;
+            border-radius: 4px;
+            transition: all 0.2s ease;
+        }
+
+        .delete-zone:hover {
+            background: #ffebee;
+        }
+
+        #add-zone {
+            background: #2ecc71;
+            color: white;
+            border: none;
+            padding: 12px;
+            width: 100%;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 500;
+            margin-bottom: 25px;
+            transition: all 0.3s ease;
+            box-shadow: 0 2px 8px rgba(46, 204, 113, 0.2);
+        }
+
+        #add-zone:hover {
+            background: #27ae60;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(46, 204, 113, 0.3);
+        }
+
+        .color-picker {
+            display: none;
+            position: absolute;
+            background: white;
+            padding: 15px;
+            border-radius: 10px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+            z-index: 1000;
+        }
+
+        .color-option {
+            width: 35px;
+            height: 35px;
+            margin: 5px;
+            border-radius: 5px;
+            cursor: pointer;
+            display: inline-block;
+            transition: transform 0.3s ease;
+        }
+
+        .color-option:hover {
+            transform: scale(1.1);
+        }
+
+        .close-map {
+            position: absolute;
+            top: 20px;
+            right: 320px;
+            z-index: 1001;
+            background: #2c3e50;
+            color: white;
+            border: none;
+            padding: 12px 25px;
+            border-radius: 25px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 0.8rem;
+            font-size: 1rem;
+            font-weight: 500;
+            transition: all 0.3s ease;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+        }
+
+        .close-map:hover {
+            background: #34495e;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+        }
+
+        /* Estilos para la barra de desplazamiento */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: rgba(0,0,0,0.1);
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: rgba(0,0,0,0.2);
+            border-radius: 4px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: rgba(0,0,0,0.3);
+        }
+
+        /* Estilos para el panel de archivos */
+        .files-panel {
+            display: none;
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: linear-gradient(135deg, #2c3e50, #3498db);
+            padding: 2rem;
+            border-radius: 15px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+            width: 80%;
+            max-width: 800px;
+            max-height: 80vh;
+            overflow-y: auto;
+            z-index: 1000;
+        }
+
+        .files-panel.visible {
+            display: block;
+        }
+
+        .files-panel-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 2rem;
+        }
+
+        .files-panel-title {
+            color: white;
+            font-size: 1.8rem;
+            font-weight: 600;
+        }
+
+        .close-panel {
+            background: transparent;
+            border: none;
+            color: white;
+            font-size: 1.5rem;
+            cursor: pointer;
+            padding: 0.5rem;
+            transition: transform 0.3s ease;
+        }
+
+        .close-panel:hover {
+            transform: rotate(90deg);
+        }
+
+        .file-buttons {
+            display: flex;
+            gap: 1rem;
+            margin-bottom: 2rem;
+        }
+
+        .file-btn {
+            flex: 1;
+            padding: 1rem;
+            border: none;
+            border-radius: 10px;
+            color: white;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+        }
+
+        .upload-btn {
+            background: #2ecc71;
+        }
+
+        .upload-btn:hover {
+            background: #27ae60;
+            transform: translateY(-2px);
+        }
+
+        .delete-btn {
+            background: #e74c3c;
+        }
+
+        .delete-btn:hover {
+            background: #c0392b;
+            transform: translateY(-2px);
+        }
+
+        .files-list {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
+            padding: 1rem;
+        }
+
+        .file-item {
+            background: white;
+            padding: 1rem;
+            border-radius: 8px;
+            margin-bottom: 1rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            transition: transform 0.3s ease;
+            cursor: pointer;
+        }
+
+        .file-item:hover {
+            transform: translateX(-5px);
+        }
+
+        .file-name {
+            font-weight: 500;
+            color: #2c3e50;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .file-name i {
+            font-size: 1.2rem;
+            color: #3498db;
+        }
+
+        .file-data {
+            display: none;
+            margin-top: 1rem;
+            font-size: 0.9rem;
+            color: #666;
+            background: rgba(255, 255, 255, 0.9);
+            border-radius: 8px;
+            padding: 1rem;
+        }
+
+        .file-data.visible {
+            display: block;
+        }
+
+        .file-data table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        .file-data th, .file-data td {
+            padding: 0.5rem;
+            text-align: left;
+            border-bottom: 1px solid #eee;
+        }
+
+        .file-data th {
+            background: #f8f9fa;
+            font-weight: 600;
+        }
+
+        .file-actions {
+            display: flex;
+            gap: 0.5rem;
+        }
+
+        .file-btn-icon {
+            background: transparent;
+            border: none;
+            color: #e74c3c;
+            cursor: pointer;
+            padding: 0.5rem;
+            transition: transform 0.3s ease;
+        }
+
+        .file-btn-icon:hover {
+            transform: scale(1.1);
+        }
+
+        #file-input {
+            display: none;
+        }
+
+        /* Estilos para los marcadores y popups */
+        .marker-popup {
+            padding: 10px;
+            max-width: 300px;
+        }
+
+        .marker-popup h3 {
+            margin: 0 0 10px 0;
+            color: #333;
+            font-size: 14px;
+            font-weight: 600;
+        }
+
+        .marker-popup p {
+            margin: 5px 0;
+            color: #666;
+            font-size: 12px;
+        }
+
+        /* Estilos para el cluster de marcadores */
+        .marker-cluster {
+            background-color: rgba(46, 204, 113, 0.6);
+            border: 2px solid #fff;
+            border-radius: 50%;
+            color: white;
+            height: 40px;
+            text-align: center;
+            width: 40px;
+            font-size: 14px;
+            font-weight: bold;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .marker-cluster div {
+            background-color: rgba(46, 204, 113, 0.6);
+            border: 2px solid #fff;
+            border-radius: 50%;
+            color: white;
+            height: 30px;
+            margin: 5px;
+            text-align: center;
+            width: 30px;
+            font-size: 12px;
+            font-weight: bold;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        /* Estilos para el panel de filtros */
+        .filters-panel {
+            background: white;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 15px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        .filter-group {
+            margin-bottom: 10px;
+        }
+
+        .filter-group label {
+            display: block;
+            margin-bottom: 5px;
+            color: #333;
+            font-size: 12px;
+        }
+
+        .filter-group select,
+        .filter-group input {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 12px;
+        }
+
+        /* Estilos para la lista de direcciones */
+        .address-list {
+            max-height: 300px;
+            overflow-y: auto;
+            margin-top: 15px;
+        }
+
+        .address-item {
+            padding: 8px;
+            border-bottom: 1px solid #eee;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+
+        .address-item:hover {
+            background-color: #f8f9fa;
+        }
+
+        .address-item.selected {
+            background-color: #e3f2fd;
+        }
+
+        /* Estilos para el panel de búsqueda */
+        .search-panel {
+            display: none;
+        }
+
+        .search-input {
+            display: none;
+        }
+
+        .search-results {
+            display: none;
+        }
+
+        .search-result-item {
+            display: none;
+        }
+
+        /* Estilos para los controles de dibujo */
+        .leaflet-draw-toolbar a {
+            background-color: white;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+            width: 30px;
+            height: 30px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 2px;
+        }
+
+        .leaflet-draw-toolbar a:hover {
+            background-color: #f8f9fa;
+        }
+
+        .leaflet-draw-toolbar a.leaflet-disabled {
+            background-color: #e9ecef;
+            color: #adb5bd;
+            cursor: not-allowed;
+        }
+
+        /* Estilos para el contenedor de herramientas */
+        .leaflet-draw-toolbar {
+            background: white;
+            border-radius: 4px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+            padding: 4px;
+        }
+
+        .leaflet-draw-toolbar-top {
+            margin-bottom: 4px;
+        }
+
+        .leaflet-draw-toolbar-bottom {
+            margin-top: 4px;
+        }
+
+        .folder-item {
+            background: white;
+            border-radius: 8px;
+            margin-bottom: 10px;
+            overflow: hidden;
+        }
+
+        .folder-header {
+            padding: 15px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            background: #f8f9fa;
+        }
+
+        .folder-content {
+            padding: 15px;
+            display: none;
+            background: white;
+        }
+
+        .folder-content.visible {
+            display: block;
+        }
+
+        .text-editor {
+            border: 1px solid #dee2e6;
+            border-radius: 4px;
+            padding: 15px;
+        }
+
+        .text-editor textarea {
+            width: 100%;
+            min-height: 200px;
+            border: 1px solid #ced4da;
+            border-radius: 4px;
+            padding: 10px;
+            margin: 10px 0;
+            font-family: 'Courier New', monospace;
+            resize: vertical;
+        }
+
+        .text-editor button {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 8px 15px;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+
+        .text-editor button:hover {
+            background: #0056b3;
+        }
+
+        #camera-container {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.8);
+            z-index: 1000;
+        }
+
+        #camera-view {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .code-frame {
+            position: absolute;
+            border: 2px solid black;
+            background: rgba(0, 0, 0, 0.5);
+            color: white;
+            padding: 5px;
+            font-size: 14px;
+        }
+
+        /* Estilos responsivos */
+        @media (max-width: 768px) {
+            .header h1 {
+                font-size: 2.5rem;
+                margin-bottom: 2rem;
+            }
+
+            .header-buttons {
+                flex-direction: column;
+                gap: 1rem;
+            }
+
+            .btn {
+                width: 100%;
+                max-width: 300px;
+            }
+
+            #map-container.visible {
+                flex-direction: column;
+            }
+
+            #map {
+                height: 60vh;
+                margin-right: 0;
+            }
+
+            #sidebar {
+                width: 100%;
+                position: relative;
+                height: auto;
+                max-height: 40vh;
+            }
+
+            .files-panel {
+                width: 95%;
+                max-height: 90vh;
+            }
+
+            .file-buttons {
+                flex-direction: column;
+            }
+
+            .file-btn {
+                width: 100%;
+            }
+        }
+
+        /* Estilos para el botón de volver en la cámara */
+        .back-button {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            z-index: 1001;
+            background: rgba(0, 0, 0, 0.5);
+            color: white;
+            border: none;
+            padding: 12px 25px;
+            border-radius: 25px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 0.8rem;
+            font-size: 1rem;
+            font-weight: 500;
+            transition: all 0.3s ease;
+        }
+
+        .back-button:hover {
+            background: rgba(0, 0, 0, 0.7);
+            transform: translateY(-2px);
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>Enrutador</h1>
+        <div class="header-buttons">
+            <button class="btn empty" onclick="startCamera()">
+                <i class="fas fa-camera"></i>
+                Cámara
+            </button>
+            <button class="btn" onclick="toggleFilesPanel()">
+                <i class="fas fa-file-excel"></i>
+                Zonificar Documento Excel
+            </button>
+            <button class="btn" onclick="toggleDatabasePanel()">
+                <i class="fas fa-database"></i>
+                Base de Datos para Rutas
+            </button>
+        </div>
+    </div>
+
+    <div class="main-content">
+    </div>
+
+    <div id="map-container">
+        <button class="close-map" onclick="hideMap()">
+            <i class="fas fa-times"></i>
+            Cerrar Mapa
+        </button>
+        <div id="map"></div>
+        <div id="sidebar">
+            <button id="add-zone">Agregar Nueva Zona</button>
+            <div id="zones-list"></div>
+            <div class="address-list"></div>
+        </div>
+    </div>
+
+    <div id="color-picker" class="color-picker">
+        <div class="color-option" style="background-color: #FF0000" data-color="#FF0000"></div>
+        <div class="color-option" style="background-color: #00FF00" data-color="#00FF00"></div>
+        <div class="color-option" style="background-color: #0000FF" data-color="#0000FF"></div>
+        <div class="color-option" style="background-color: #FFFF00" data-color="#FFFF00"></div>
+        <div class="color-option" style="background-color: #FF00FF" data-color="#FF00FF"></div>
+        <div class="color-option" style="background-color: #00FFFF" data-color="#00FFFF"></div>
+        <div class="color-option" style="background-color: #FFA500" data-color="#FFA500"></div>
+        <div class="color-option" style="background-color: #800080" data-color="#800080"></div>
+    </div>
+
+    <!-- Panel de Archivos -->
+    <div id="files-panel" class="files-panel">
+        <div class="files-panel-header">
+            <h2 class="files-panel-title">Zonificación de Documento Excel</h2>
+            <button class="close-panel" onclick="toggleFilesPanel()">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        <div class="file-buttons">
+            <label class="file-btn upload-btn">
+                <i class="fas fa-upload"></i>
+                Subir Archivos Excel
+                <input type="file" id="file-input" accept=".xls,.xlsx" multiple onchange="handleFileUpload(event)">
+            </label>
+            <button class="file-btn delete-btn" onclick="deleteAllFiles()">
+                <i class="fas fa-trash"></i>
+                Eliminar Archivos
+            </button>
+        </div>
+        <div id="files-list" class="files-list">
+            <!-- Los archivos se mostrarán aquí -->
+        </div>
+    </div>
+
+    <!-- Panel de Zonificación -->
+    <div id="zoning-panel" class="files-panel">
+        <div class="files-panel-header">
+            <h2 class="files-panel-title">Listas Zonificadas</h2>
+            <button class="close-panel" onclick="toggleZoningPanel()">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        <div class="file-buttons">
+            <button class="file-btn delete-btn" onclick="deleteZonedList()">
+                <i class="fas fa-trash"></i>
+                Eliminar Todas Las Listas
+            </button>
+        </div>
+        <div id="zoning-list" class="files-list">
+            <!-- Las listas zonificadas se mostrarán aquí -->
+        </div>
+    </div>
+
+    <!-- Panel de Base de Datos -->
+    <div id="database-panel" class="files-panel">
+        <div class="files-panel-header">
+            <h2 class="files-panel-title">Base de Datos para Rutas</h2>
+            <button class="close-panel" onclick="toggleDatabasePanel()">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        <div class="file-buttons">
+            <button class="file-btn upload-btn" onclick="addFolder()">
+                <i class="fas fa-folder-plus"></i>
+                Agregar Carpeta
+            </button>
+            <button class="file-btn delete-btn" onclick="deleteFolder()">
+                <i class="fas fa-folder-minus"></i>
+                Eliminar Carpeta
+            </button>
+        </div>
+        <div id="folders-list" class="files-list">
+            <!-- Las carpetas se mostrarán aquí -->
+        </div>
+    </div>
+
+    <div id="camera-container">
+        <button class="back-button" onclick="stopCamera()">
+            <i class="fas fa-arrow-left"></i>
+            Volver
+        </button>
+        <video id="camera-view" autoplay></video>
+    </div>
+
+    <script>
+        let savedFiles = JSON.parse(localStorage.getItem('savedFiles') || '[]');
+        let zonedLists = JSON.parse(localStorage.getItem('zonedLists') || '[]');
+        let databaseFolders = JSON.parse(localStorage.getItem('databaseFolders') || '{}');
+        
+        // Definir las carpetas de búsqueda de palabras clave
+        const keywordFolders = ['oeste', 'plano', 'montaña'];
+        
+        // Lista de ciudades que se asignan directamente como zona
+        const ciudadesDirectas = [
+            'acarigua', 'anaco', 'barcelona', 'barquisimeto', 'cabimas', 'caraballeda',
+            'ciudad bolivar', 'ciudad ojeda', 'coro', 'cumana', 'el tigre', 'el vigia', 
+            'guarenas', 'guatire', 'la guaira', 'lecherias', 'los teques', 'san antonio', 
+            'maracaibo', 'maracay', 'margarita', 'por la mar', 'maturin', 'merida', 
+            'puerto la cruz', 'puerto ordaz', 'punto fijo', 'san juan de los morros',
+            'tachira', 'aragua', 'valencia', 'trujillo', 'callao', 'valera', 'araure', 
+            'barinas', 'ejido', 'la victoria', 'catia la mar', 'charallave', 'san antonio'
+        ];
+        
+        // Estructura para almacenar las palabras clave por carpeta
+        let keywordsByFolder = {
+            'oeste': [],
+            'plano': [],
+            'montaña': []
+        };
+        
+        // Función para cargar las palabras clave desde archivos de texto
+        async function loadKeywords() {
+            // Por ahora, solo cargamos palabras clave para oeste y dejamos las demás vacías
+            keywordsByFolder = {
+                'oeste': [
+                    'catia', 'antimano', 'caricuao', 'la yaguara', 'la pastora', 'propatria', 
+                    'casalta', 'la vega', 'el junquito', 'manicomio', 'la silsa', 'el calvario',
+                    'la vega', '23 de enero', 'el guarataro', 'la planicie', 'nueva caracas',
+                    'gramoven', 'ruiz pineda', 'carapita', 'antímano', 'la quebradita', 'san martín',
+                    'sucre', 'victoria', 'boulevard de catia', 'calle real de catia',
+                    'morán', 'carretera vieja caracas la guaira'
+                ],
+                'plano': [],  // Por ahora sin palabras clave
+                'montaña': [] // Por ahora sin palabras clave
+            };
+            
+            console.log('Palabras clave cargadas por carpeta:', keywordsByFolder);
+        }
+        
+        // Llamar a cargar palabras clave cuando se inicia la página
+        document.addEventListener('DOMContentLoaded', function() {
+            // Cargar las carpetas existentes
+            const savedFolders = localStorage.getItem('databaseFolders');
+            if (savedFolders) {
+                databaseFolders = JSON.parse(savedFolders);
+            } else {
+                databaseFolders = {};
+            }
+            
+            // Actualizar la lista de carpetas
+            updateFoldersList();
+            
+            // Cargar el resto de la funcionalidad
+            loadKeywords();
+            updateFilesList();
+            updateZoningList();
+            
+            // Limpiar LocalStorage de datos anteriores no usados
+            localStorage.removeItem('savedFiles');
+            localStorage.removeItem('mapZones');
+            localStorage.removeItem('zoneFolders');
+            localStorage.removeItem('zonedLists'); // Asegurar que se eliminen las listas zonificadas
+
+            // Inicializar zonedLists correctamente
+            zonedLists = [];
+        });
+        
+        // Función para determinar la zona basada en palabras clave
+        function findZoneByKeywords(text) {
+            const normalizedText = normalizeText(text);
+
+            // Buscar ciudades directas primero
+            for (const ciudad of ciudadesDirectas) {
+                if (normalizedText.includes(normalizeText(ciudad))) {
+                    console.log(`Ciudad directa encontrada: "${ciudad}"`);
+                    return ciudad;
+                }
+            }
+
+            // Buscar en carpetas de la base de datos
+            for (const folder in databaseFolders) {
+                for (const keyword of databaseFolders[folder]) {
+                    const keywordNormalizado = normalizeText(keyword);
+                    const regex = new RegExp(`\\b${keywordNormalizado}\\b`, 'i');
+                    if (regex.test(normalizedText)) {
+                        console.log(`Palabra clave encontrada en base de datos: "${keyword}" en carpeta "${folder}"`);
+                        return folder;
+                    }
+                }
+            }
+
+            // Si no hay coincidencias, devolver "sin zona"
+            return "sin zona";
+        }
+        
+        // Función para normalizar texto (eliminar acentos, convertir a minúsculas)
+        function normalizeText(text) {
+            return text.toLowerCase()
+                .normalize("NFD")
+                .replace(/[\u0300-\u036f]/g, "")
+                .replace(/[^a-z0-9\s]/g, " ")
+                .replace(/\s+/g, " ")
+                .trim();
+        }
+
+        function handleFileUpload(event) {
+            const files = event.target.files;
+            zonedLists = []; // Reiniciar zonedLists al cargar nuevos archivos
+            Array.from(files).forEach(file => {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    const data = new Uint8Array(e.target.result);
+                    const workbook = XLSX.read(data, { type: 'array' });
+                    const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+                    
+                    // Obtener los encabezados de las columnas
+                    const headers = XLSX.utils.sheet_to_json(firstSheet, { header: 1 })[0];
+                    
+                    // Encontrar los índices de las columnas receipt y consignee
+                    const receiptIndex = headers.findIndex(header => 
+                        header.toString().toLowerCase().includes('receipt'));
+                    const consigneeIndex = headers.findIndex(header => 
+                        header.toString().toLowerCase().includes('consignee'));
+
+                    if (receiptIndex === -1 || consigneeIndex === -1) {
+                        alert('El archivo debe contener columnas "receipt" y "consignee"');
+                        return;
+                    }
+
+                    // Obtener los datos de las columnas específicas
+                    const jsonData = XLSX.utils.sheet_to_json(firstSheet, { header: 1 });
+                    const processedData = jsonData.slice(1).map(row => {
+                        const receipt = row[receiptIndex] || '';
+                        const consignee = row[consigneeIndex] || '';
+                        
+                        // Extraer el nombre (texto antes de [...])
+                        let nombre = '';
+                        const nombreMatch = consignee.match(/^(.*?)\s*\[/);
+                        if (nombreMatch && nombreMatch[1]) {
+                            nombre = nombreMatch[1].trim();
+                        }
+                        
+                        // Extraer la dirección (texto después de [...] hasta la última coma)
+                        let direccion = '';
+                        const direccionMatch = consignee.match(/\](.+)(?:,\s*[^,]+)$/);
+                        if (direccionMatch && direccionMatch[1]) {
+                            direccion = direccionMatch[1].trim();
+                        }
+                        
+                        return {
+                            receipt: receipt,
+                            nombre: nombre,
+                            direccion: direccion,
+                            consignee: consignee,
+                            zone: findZoneByKeywords(consignee)
+                        };
+                    }).filter(row => row.receipt || row.consignee); // Filtrar filas vacías
+
+                    if (processedData.length === 0) {
+                        alert('No se encontraron datos en las columnas especificadas');
+                        return;
+                    }
+
+                    const fileName = prompt('Ingrese el nombre para guardar el archivo:', file.name.replace(/\.[^/.]+$/, ''));
+                    if (fileName) {
+                        // Guardar en zonedLists
+                        zonedLists.push({
+                            name: fileName + ' (Zonificado)',
+                            data: processedData,
+                            date: new Date().toISOString()
+                        });
+                        
+                        saveZonedLists();
+                        updateZoningList();
+                        
+                        // Mostrar panel de zonificación para ver los resultados
+                        toggleZoningPanel();
+                        
+                        alert(`Archivo zonificado correctamente. Se encontraron ${processedData.length} registros.`);
+                    }
+                };
+                reader.readAsArrayBuffer(file);
+            });
+        }
+
+        function toggleFilesPanel() {
+            const panel = document.getElementById('files-panel');
+            panel.classList.toggle('visible');
+        }
+        
+        function toggleZoningPanel() {
+            const panel = document.getElementById('zoning-panel');
+            panel.classList.toggle('visible');
+            if (panel.classList.contains('visible')) {
+                updateZoningList();
+            }
+        }
+
+        function updateFilesList() {
+            const filesList = document.getElementById('files-list');
+            filesList.innerHTML = '';
+
+            filesList.innerHTML = `
+                <div class="file-item" style="text-align: center; color: #333;">
+                    <i class="fas fa-info-circle"></i>
+                    Suba un archivo Excel para zonificarlo automáticamente.
+                </div>
+            `;
+        }
+
+        function updateZoningList() {
+            const zoningList = document.getElementById('zoning-list');
+            zoningList.innerHTML = '';
+
+            if (zonedLists.length === 0) {
+                zoningList.innerHTML = `
+                    <div class="file-item" style="text-align: center; color: #333;">
+                        <i class="fas fa-info-circle"></i>
+                        No hay listas procesadas. Seleccione un archivo Excel para zonificar.
+                    </div>
+                `;
+                return;
+            }
+
+            zonedLists.forEach((list, index) => {
+                const listItem = document.createElement('div');
+                listItem.className = 'file-item';
+                listItem.innerHTML = `
+                    <div style="width: 100%;">
+                        <div class="file-name" onclick="toggleZonedData(${index})" style="color: #333;">
+                            <i class="fas fa-map-marked-alt"></i>
+                            ${list.name}
+                            <span style="font-size: 0.8rem; color: #666; margin-left: 10px;">
+                                (${list.data.length} registros)
+                            </span>
+                        </div>
+                        <div class="file-data" id="zoned-data-${index}">
+                            <div style="text-align: right; margin-bottom: 10px;">
+                                <button class="btn" style="padding: 5px 10px; font-size: 0.9rem; background: #3498db;" onclick="toggleZonedData(${index})">
+                                    <i class="fas fa-arrow-left"></i> Volver
+                                </button>
+                            </div>
+                            <table style="color: #333;">
+                                <thead>
+                                    <tr>
+                                        <th style="color: #333;">Código</th>
+                                        <th style="color: #333;">Nombre</th>
+                                        <th style="color: #333;">Zona</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    ${list.data.map(row => `
+                                        <tr>
+                                            <td style="color: #333;">${row.receipt}</td>
+                                            <td style="color: #333;">${row.nombre}</td>
+                                            <td style="color: #333;">${row.zone}</td>
+                                        </tr>
+                                    `).join('')}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                    <div class="file-actions">
+                        <button class="file-btn-icon" onclick="deleteZonedList(${index})">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                    </div>
+                `;
+                zoningList.appendChild(listItem);
+            });
+        }
+
+        function toggleZonedData(index) {
+            const zonedData = document.getElementById(`zoned-data-${index}`);
+            zonedData.classList.toggle('visible');
+        }
+
+        function deleteZonedList(index) {
+            if (index !== undefined) {
+                if (confirm(`¿Está seguro de que desea eliminar la lista "${zonedLists[index].name}"?`)) {
+                    zonedLists.splice(index, 1);
+                    saveZonedLists();
+                    updateZoningList();
+                }
+            } else {
+                if (confirm('¿Está seguro de que desea eliminar todas las listas procesadas?')) {
+                    zonedLists = [];
+                    saveZonedLists();
+                    updateZoningList();
+                }
+            }
+        }
+
+        function saveZonedLists() {
+            localStorage.setItem('zonedLists', JSON.stringify(zonedLists));
+        }
+        
+        function deleteAllFiles() {
+            if (confirm('¿Está seguro de que desea eliminar todos los archivos?')) {
+                zonedLists = [];
+                saveZonedLists();
+                updateZoningList();
+            }
+        }
+
+        function toggleDatabasePanel() {
+            const panel = document.getElementById('database-panel');
+            panel.classList.toggle('visible');
+        }
+
+        function addFolder() {
+            const folderName = prompt('Ingrese el nombre de la carpeta:');
+            if (folderName) {
+                if (!databaseFolders[folderName]) {
+                    databaseFolders[folderName] = [];
+                    saveDatabaseFolders();
+                    updateFoldersList();
+                } else {
+                    alert('La carpeta ya existe.');
+                }
+            }
+        }
+
+        function deleteFolder() {
+            const folderName = prompt('Ingrese el nombre de la carpeta a eliminar:');
+            if (folderName && databaseFolders[folderName]) {
+                // Eliminar la carpeta del objeto
+                delete databaseFolders[folderName];
+                
+                // Guardar los cambios en localStorage
+                localStorage.setItem('databaseFolders', JSON.stringify(databaseFolders));
+                
+                // Actualizar la visualización
+                updateFoldersList();
+                
+                // Limpiar cualquier dato relacionado con la carpeta eliminada
+                localStorage.removeItem(`keywords-${folderName}`);
+                
+                alert('Carpeta eliminada correctamente.');
+            } else {
+                alert('La carpeta no existe.');
+            }
+        }
+
+        function saveDatabaseFolders() {
+            // Guardar las carpetas actuales
+            localStorage.setItem('databaseFolders', JSON.stringify(databaseFolders));
+            
+            // Limpiar cualquier dato antiguo que no esté en las carpetas actuales
+            const savedFolders = Object.keys(databaseFolders);
+            const allStorageKeys = Object.keys(localStorage);
+            
+            allStorageKeys.forEach(key => {
+                if (key.startsWith('keywords-')) {
+                    const folderName = key.replace('keywords-', '');
+                    if (!savedFolders.includes(folderName)) {
+                        localStorage.removeItem(key);
+                    }
+                }
+            });
+        }
+
+        function updateFoldersList() {
+            const foldersList = document.getElementById('folders-list');
+            foldersList.innerHTML = '';
+
+            if (Object.keys(databaseFolders).length === 0) {
+                foldersList.innerHTML = `
+                    <div class="file-item" style="text-align: center; color: #333;">
+                        <i class="fas fa-info-circle"></i>
+                        No hay carpetas creadas. Use el botón "Agregar Carpeta" para crear una nueva.
+                    </div>
+                `;
+                return;
+            }
+
+            for (const folder in databaseFolders) {
+                const folderItem = document.createElement('div');
+                folderItem.className = 'folder-item';
+                folderItem.innerHTML = `
+                    <div class="folder-header" onclick="toggleFolderContent('${folder}')">
+                        <i class="fas fa-folder"></i>
+                        <span style="margin-left: 10px; font-weight: bold; font-size: 1.1em; color: #000000;">${folder}</span>
+                    </div>
+                    <div id="folder-content-${folder}" class="folder-content">
+                        <div class="text-editor">
+                            <textarea id="keywords-${folder}" 
+                                    placeholder="Escriba cada palabra clave en una nueva línea"
+                            >${databaseFolders[folder].join('\n')}</textarea>
+                            <button onclick="saveKeywords('${folder}')">
+                                <i class="fas fa-save"></i> Guardar
+                            </button>
+                        </div>
+                    </div>
+                `;
+                foldersList.appendChild(folderItem);
+            }
+        }
+
+        function toggleFolderContent(folderName) {
+            const content = document.getElementById(`folder-content-${folderName}`);
+            if (content) {
+                content.classList.toggle('visible');
+            }
+        }
+
+        function saveKeywords(folderName) {
+            const editor = document.getElementById(`keywords-${folderName}`);
+            if (editor) {
+                const keywords = editor.value.split('\n').filter(keyword => keyword.trim() !== '');
+                databaseFolders[folderName] = keywords;
+                saveDatabaseFolders();
+                alert('Palabras clave guardadas correctamente.');
+            }
+        }
+
+        let cameraStream = null;
+
+        function startCamera() {
+            const cameraContainer = document.getElementById('camera-container');
+            const cameraView = document.getElementById('camera-view');
+            cameraContainer.style.display = 'block';
+
+            navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } })
+                .then(stream => {
+                    cameraStream = stream;
+                    cameraView.srcObject = stream;
+                    startCodeRecognition();
+                })
+                .catch(err => {
+                    console.error('Error al acceder a la cámara:', err);
+                    alert('No se pudo acceder a la cámara. Asegúrate de permitir el acceso.');
+                });
+        }
+
+        function stopCamera() {
+            if (cameraStream) {
+                cameraStream.getTracks().forEach(track => track.stop());
+                cameraStream = null;
+            }
+            document.getElementById('camera-container').style.display = 'none';
+        }
+
+        function startCodeRecognition() {
+            Quagga.init({
+                inputStream: {
+                    name: 'Live',
+                    type: 'LiveStream',
+                    target: document.getElementById('camera-view'),
+                    constraints: {
+                        facingMode: 'environment'
+                    },
+                },
+                decoder: {
+                    readers: ['code_128_reader', 'ean_reader', 'ean_8_reader', 'code_39_reader', 'code_39_vin_reader', 'codabar_reader', 'upc_reader', 'upc_e_reader']
+                }
+            }, function(err) {
+                if (err) {
+                    console.error('Error al inicializar Quagga:', err);
+                    return;
+                }
+                Quagga.start();
+            });
+
+            Quagga.onDetected(function(result) {
+                const code = result.codeResult.code;
+                const zone = findZoneByCode(code);
+                displayCodeFrame(result, zone);
+            });
+        }
+
+        function findZoneByCode(code) {
+            // Buscar el código en las listas zonificadas
+            for (const list of zonedLists) {
+                const item = list.data.find(item => item.receipt === code);
+                if (item) {
+                    return item.zone;
+                }
+            }
+
+            // Si no se encuentra en las listas zonificadas, buscar en las carpetas de la base de datos
+            const normalizedCode = normalizeText(code);
+            for (const folder in databaseFolders) {
+                for (const keyword of databaseFolders[folder]) {
+                    if (normalizedCode.includes(normalizeText(keyword))) {
+                        return folder;
+                    }
+                }
+            }
+
+            return 'Zona no encontrada';
+        }
+
+        function displayCodeFrame(result, zone) {
+            // Eliminar marcos anteriores del mismo código
+            const existingFrames = document.querySelectorAll('.code-frame');
+            existingFrames.forEach(frame => {
+                if (frame.dataset.code === result.codeResult.code) {
+                    frame.remove();
+                }
+            });
+
+            const frame = document.createElement('div');
+            frame.className = 'code-frame';
+            frame.dataset.code = result.codeResult.code;
+            frame.style.left = result.box.x + 'px';
+            frame.style.top = result.box.y + 'px';
+            frame.style.width = result.box.width + 'px';
+            frame.style.height = result.box.height + 'px';
+            frame.innerHTML = `
+                <div style="color: white; font-weight: bold;">${result.codeResult.code}</div>
+                <div style="color: white;">Zona: ${zone}</div>
+            `;
+
+            document.getElementById('camera-container').appendChild(frame);
+        }
+    </script>
+</body>
+</html> 
